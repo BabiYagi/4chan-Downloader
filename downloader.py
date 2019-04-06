@@ -1,14 +1,8 @@
-import bs4
-import argparse
+import bs4, argparse, sys, re, datetime, time, shutil, os.path
 import urllib.request as urllib
 import urllib.parse as urlparse
-import os.path
-import sys
-import re
-import datetime
-import time
 from hurry.filesize import size
-import shutil
+
 
 
 def get_html(url):
@@ -137,14 +131,18 @@ def get_time(seconds):
 
 def calc_dir_size(dir_path, list_bool):
     folder_size = 0
+    amount_files = 0
     for (path, dirs, files) in os.walk(dir_path):
         for file in files:
+            amount_files += 1
             filename = os.path.join(path, file)
             folder_size += os.path.getsize(filename)
     if list_bool:
-        return folder_size
+        return_list = [folder_size, amount_files]
+        return return_list
     else:
-        return size(folder_size)
+        return_list = [size(folder_size), str(amount_files)]
+        return return_list
 
 
 
@@ -164,7 +162,6 @@ def printProgressBar(iteration, total, prefix = '', suffix = '', decimals = 1, l
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
     print('\r%s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
-    # Print New Line on Complete
     if iteration == total: 
         print()
 
@@ -197,8 +194,9 @@ def download_files(links_and_filenames_dict, directory, url, list_bool, time_boo
     if time_bool:
         get_time(total_time)
     if not list_bool:
-        print("\nThe downloaded files took up " +
-              calc_dir_size(path, list_bool) + " of your harddisk space.")
+        dir_files_list = calc_dir_size(path, list_bool)
+        print("\nYou downloaded " +
+              dir_files_list[1] + " files with a combined filesize of " + dir_files_list[0])
     else:
         return_list = [calc_dir_size(path, list_bool), i]
         return return_list
@@ -206,6 +204,7 @@ def download_files(links_and_filenames_dict, directory, url, list_bool, time_boo
 
 if __name__ == '__main__':
     disk_space = 0
+    amount_files = 0
     parser = argparse.ArgumentParser(
         description='A script that downloads all media files from a 4chan thread')
     parser.add_argument(
@@ -233,13 +232,14 @@ if __name__ == '__main__':
         start = time.time()
         url_list = [str(item) for item in args.list.split(' ')]
         length = 0
+        index = 1
         for url in url_list:
             length += len(get_download_links(get_html(url)))
-        index = 1
         for url in url_list:
             return_list = download_files(get_download_links(get_html(url)),
                                          dest, url, True, False, args.overwrite, length, index)
-            disk_space += return_list[0]
+            disk_space += return_list[0][0]
+            amount_files += return_list[0][1]
             index = return_list[1]
         end = time.time()
         total_time = end - start
@@ -248,5 +248,5 @@ if __name__ == '__main__':
         download_files(get_download_links(get_html(args.url)),
                        dest, args.url, False, True, args.overwrite, len(get_download_links(get_html(args.url))))
     if disk_space > 0:
-        print("\nThe downloaded files took up " +
-              size(disk_space) + " of your harddisk space.")
+        print("\nYou downloaded " +
+              str(amount_files) + " files with a combined filesize of " + size(disk_space))
